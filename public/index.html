@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lobby Bots</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101114;
+      --panel: #181a1f;
+      --panel-soft: #20232a;
+      --line: #303540;
+      --text: #f2f4f8;
+      --muted: #a1a9b7;
+      --blue: #58a6ff;
+      --green: #63d471;
+      --yellow: #f4c95d;
+      --red: #ff6b6b;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .app {
+      width: min(1120px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 24px 0 48px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(24px, 4vw, 40px);
+      letter-spacing: 0;
+    }
+
+    .status {
+      border: 1px solid var(--line);
+      color: var(--muted);
+      padding: 8px 12px;
+      border-radius: 8px;
+      white-space: nowrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    section {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      letter-spacing: 0;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0c0d10;
+      color: var(--text);
+      padding: 10px 12px;
+      font: inherit;
+      outline: none;
+    }
+
+    input:focus { border-color: var(--blue); }
+
+    .field { margin-bottom: 12px; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    button {
+      min-height: 42px;
+      border: 1px solid var(--line);
+      background: var(--panel-soft);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 0 14px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:hover { border-color: var(--blue); }
+    button.primary { background: var(--blue); border-color: var(--blue); color: #07101e; }
+    button.good { background: var(--green); border-color: var(--green); color: #071307; }
+    button.warn { background: var(--yellow); border-color: var(--yellow); color: #171204; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+
+    .room-code {
+      display: grid;
+      place-items: center;
+      min-height: 92px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      background: #0c0d10;
+      border: 1px dashed var(--line);
+      font-size: 42px;
+      font-weight: 900;
+      letter-spacing: .08em;
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .metric {
+      background: var(--panel-soft);
+      border-radius: 8px;
+      padding: 10px;
+      min-width: 0;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
+
+    .metric strong {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .players {
+      display: grid;
+      gap: 8px;
+    }
+
+    .player {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--line);
+      background: #111318;
+      border-radius: 8px;
+      padding: 10px 12px;
+      min-height: 58px;
+    }
+
+    .name {
+      min-width: 0;
+      font-weight: 800;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      border-radius: 999px;
+      padding: 0 8px;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      font-size: 12px;
+    }
+
+    .score {
+      min-width: 48px;
+      text-align: right;
+      font-size: 22px;
+      font-weight: 900;
+    }
+
+    .events {
+      height: 230px;
+      overflow: auto;
+      display: grid;
+      align-content: start;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .error {
+      color: var(--red);
+      min-height: 20px;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+
+    @media (max-width: 820px) {
+      header { align-items: flex-start; flex-direction: column; }
+      .grid { grid-template-columns: 1fr; }
+      .meta { grid-template-columns: 1fr; }
+      .room-code { font-size: 34px; }
+      .player { grid-template-columns: 1fr auto; }
+      .player .tag { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <h1>Lobby Bots</h1>
+      <div class="status" id="serverStatus">connecting</div>
+    </header>
+
+    <div class="grid">
+      <section>
+        <h2>Room</h2>
+        <div class="field">
+          <label for="name">Your name</label>
+          <input id="name" maxlength="24" value="Player" />
+        </div>
+        <div class="row">
+          <button class="primary" id="createBtn">Create room</button>
+        </div>
+        <div class="field" style="margin-top: 16px;">
+          <label for="code">Join code</label>
+          <input id="code" maxlength="24" placeholder="9M4GECLLQD" />
+        </div>
+        <div class="row">
+          <button id="joinBtn">Join room</button>
+          <button id="readyBtn" disabled>Ready</button>
+        </div>
+        <p class="error" id="error"></p>
+      </section>
+
+      <section>
+        <h2>Bot Remote</h2>
+        <div class="field">
+          <label for="remoteCode">Room code</label>
+          <input id="remoteCode" maxlength="24" placeholder="9M4GECLLQD" />
+        </div>
+        <div class="field">
+          <label for="botName">Bot name</label>
+          <input id="botName" maxlength="24" value="Phone Bot" />
+        </div>
+        <div class="row">
+          <button class="primary" id="remoteJoinBtn">Join remote game</button>
+          <button id="remoteLeaveBtn" disabled>Leave</button>
+        </div>
+        <p class="error" id="remoteStatus"></p>
+      </section>
+
+      <section>
+        <h2>Game</h2>
+        <div class="room-code" id="roomCode">-----</div>
+        <div class="meta">
+          <div class="metric"><span>Status</span><strong id="roomStatus">No room</strong></div>
+          <div class="metric"><span>Players</span><strong id="playerCount">0</strong></div>
+          <div class="metric"><span>Time</span><strong id="timeLeft">45s</strong></div>
+        </div>
+        <div class="row" style="margin-bottom: 12px;">
+          <button class="warn" id="botBtn" disabled>Add bot</button>
+          <button class="good" id="botsBtn" disabled>Add 4 bots</button>
+          <button class="primary" id="startBtn" disabled>Start</button>
+          <button id="scoreBtn" disabled>Score +1</button>
+        </div>
+        <div class="players" id="players"></div>
+      </section>
+
+      <section style="grid-column: 1 / -1;">
+        <h2>Events</h2>
+        <div class="events" id="events"></div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const state = { room: null, player: null, poll: null };
+
+    async function api(path, options = {}) {
+      const res = await fetch(path, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options,
+        body: options.body ? JSON.stringify(options.body) : undefined,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      return data;
+    }
+
+    function setError(message = '') {
+      $('error').textContent = message;
+    }
+
+    async function run(fn) {
+      setError();
+      try {
+        await fn();
+      } catch (err) {
+        setError(err.message);
+      }
+    }
+
+    function startPolling() {
+      clearInterval(state.poll);
+      state.poll = setInterval(refreshRoom, 900);
+    }
+
+    async function refreshRoom() {
+      if (!state.room) return;
+      try {
+        const data = await api(`/api/rooms/${state.room.code}`);
+        state.room = data.room;
+        render();
+      } catch (err) {
+        setError(err.message);
+      }
+    }
+
+    function render() {
+      const room = state.room;
+      $('roomCode').textContent = room?.code || '-----';
+      $('code').value = room?.code || $('code').value;
+      $('roomStatus').textContent = room?.status || 'No room';
+      $('playerCount').textContent = String(room?.players.length || 0);
+      $('timeLeft').textContent = `${Math.ceil((room?.remainingMs ?? 45000) / 1000)}s`;
+
+      const inRoom = Boolean(room && state.player);
+      const playing = room?.status === 'playing';
+      $('readyBtn').disabled = !inRoom || playing;
+      $('botBtn').disabled = !room || room.status === 'finished';
+      $('botsBtn').disabled = !room || room.status === 'finished';
+      $('startBtn').disabled = !room || playing || room.status === 'finished';
+      $('scoreBtn').disabled = !inRoom || !playing;
+
+      $('players').innerHTML = room ? room.players.map((p, index) => `
+        <div class="player">
+          <div class="name">${index + 1}. ${escapeHtml(p.name)}</div>
+          <span class="tag">${p.controlled ? 'remote bot' : p.isBot ? 'bot' : p.ready ? 'ready' : 'player'}</span>
+          <div class="score">${p.score}</div>
+        </div>
+      `).join('') : '';
+
+      $('events').innerHTML = room ? [...room.events].reverse().map((event) => `
+        <div>${new Date(event.ts).toLocaleTimeString()} - ${escapeHtml(event.message)}</div>
+      `).join('') : '';
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+      }[char]));
+    }
+
+    $('createBtn').addEventListener('click', () => run(async () => {
+      const data = await api('/api/rooms', { method: 'POST', body: { name: $('name').value } });
+      state.room = data.room;
+      state.player = data.player;
+      startPolling();
+      render();
+    }));
+
+    $('joinBtn').addEventListener('click', () => run(async () => {
+      const code = $('code').value.trim().toUpperCase();
+      const data = await api(`/api/rooms/${code}/join`, { method: 'POST', body: { name: $('name').value } });
+      state.room = data.room;
+      state.player = data.player;
+      startPolling();
+      render();
+    }));
+
+    $('remoteJoinBtn').addEventListener('click', () => run(async () => {
+      const code = $('remoteCode').value.trim().toUpperCase();
+      const data = await api('/api/stax/join', { method: 'POST', body: { gameCode: code, name: $('botName').value } });
+      state.remoteSession = data;
+      $('remoteStatus').textContent = `Joined ${data.gameCode} as ${data.name} (${data.userId})`;
+      $('remoteLeaveBtn').disabled = false;
+    }));
+
+    $('remoteLeaveBtn').addEventListener('click', () => run(async () => {
+      if (!state.remoteSession) return;
+      await api('/api/stax/leave', { method: 'POST', body: { sessionId: state.remoteSession.sessionId } });
+      $('remoteStatus').textContent = 'Left remote game';
+      $('remoteLeaveBtn').disabled = true;
+      state.remoteSession = null;
+    }));
+
+    $('readyBtn').addEventListener('click', () => run(async () => {
+      const data = await api(`/api/rooms/${state.room.code}/ready`, { method: 'POST', body: { playerId: state.player.id } });
+      state.room = data.room;
+      state.player = data.player;
+      render();
+    }));
+
+    $('botBtn').addEventListener('click', () => run(async () => {
+      const data = await api(`/api/rooms/${state.room.code}/bots`, { method: 'POST', body: { count: 1 } });
+      state.room = data.room;
+      render();
+    }));
+
+    $('botsBtn').addEventListener('click', () => run(async () => {
+      const data = await api(`/api/rooms/${state.room.code}/bots`, { method: 'POST', body: { count: 4 } });
+      state.room = data.room;
+      render();
+    }));
+
+    $('startBtn').addEventListener('click', () => run(async () => {
+      const data = await api(`/api/rooms/${state.room.code}/start`, { method: 'POST' });
+      state.room = data.room;
+      render();
+    }));
+
+    $('scoreBtn').addEventListener('click', () => run(async () => {
+      const data = await api(`/api/rooms/${state.room.code}/score`, { method: 'POST', body: { playerId: state.player.id } });
+      state.room = data.room;
+      state.player = data.player;
+      render();
+    }));
+
+    api('/api/health')
+      .then((data) => { $('serverStatus').textContent = `online - ${data.rooms} rooms`; })
+      .catch(() => { $('serverStatus').textContent = 'offline'; });
+  </script>
+</body>
+</html>
