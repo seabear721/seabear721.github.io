@@ -1,0 +1,907 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Remote Bot Joiner</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1115;
+      --panel: #181b22;
+      --line: #303642;
+      --text: #f4f7fb;
+      --muted: #9aa6b7;
+      --blue: #58a6ff;
+      --green: #65d46e;
+      --red: #ff6969;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(760px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 22px;
+      box-shadow: 0 24px 60px -40px rgba(0, 0, 0, .9);
+    }
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: 28px;
+      letter-spacing: 0;
+    }
+
+    .sub {
+      margin: 0 0 22px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .field { margin-bottom: 14px; }
+
+    input {
+      width: 100%;
+      min-height: 46px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0b0d11;
+      color: var(--text);
+      padding: 11px 12px;
+      font: inherit;
+      outline: none;
+    }
+
+    input:focus { border-color: var(--blue); }
+    input:disabled { opacity: .65; }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    button {
+      min-height: 46px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #222733;
+      color: var(--text);
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    button.primary {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #07101d;
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin-top: 18px;
+      min-height: 74px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #10131a;
+      padding: 13px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .status strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--text);
+    }
+
+    .status.connected strong { color: var(--green); }
+    .status.error strong { color: var(--red); }
+
+    .row-2 { display: flex; gap: 10px; }
+    .row-2 .grow { flex: 1 1 auto; }
+    .row-2 .narrow { flex: 0 0 96px; }
+
+    /* Fleet bulk-action bar */
+    .fleet {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .fleet-scope {
+      color: var(--muted);
+      font-size: 12px;
+      margin: 0 0 10px;
+    }
+
+    .fleet-scope b { color: var(--text); }
+
+    .fleet-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .fleet-row + .fleet-row { margin-top: 10px; }
+    .fleet-row .grow { flex: 1 1 120px; min-height: 40px; }
+    .fleet-row button { min-height: 40px; padding: 0 12px; font-size: 13px; }
+    .fleet-row input { min-height: 40px; }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+
+    .toggle-copy { min-width: 0; }
+    .toggle-copy strong { display: block; font-size: 14px; }
+    .toggle-copy span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .switch {
+      position: relative;
+      flex: 0 0 auto;
+      width: 62px;
+      height: 34px;
+      min-height: 0;       /* override the global button min-height:46px */
+      padding: 0;          /* drop default button padding so the knob centers */
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #0b0d11;
+      cursor: pointer;
+      transition: border-color .2s ease, background .2s ease, box-shadow .2s ease;
+    }
+
+    .switch::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 4px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--muted);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, .45);
+      transform: translateY(-50%);
+      transition: left .24s cubic-bezier(.2, .8, .2, 1), background .2s ease;
+    }
+
+    .switch.on {
+      border-color: rgba(101, 212, 110, .9);
+      background: rgba(101, 212, 110, .15);
+      box-shadow: 0 0 0 4px rgba(101, 212, 110, .09);
+    }
+
+    .switch.on::before {
+      left: calc(100% - 28px);
+      background: var(--green);
+    }
+
+    .switch:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* Live sessions list */
+    .sessions, .board {
+      margin-top: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #10131a;
+      padding: 13px;
+    }
+
+    .sessions h2, .board h2 { margin: 0; font-size: 16px; }
+
+    .sessions-list, .board-list {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .session-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0b0d11;
+      padding: 9px 11px;
+    }
+
+    .session-main { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1 1 200px; }
+    .session-main strong { display: block; }
+
+    .session-meta {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .session-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+    .session-actions input { width: 78px; min-height: 36px; padding: 6px 8px; font-size: 13px; }
+    .session-actions button { min-height: 36px; padding: 0 11px; font-size: 12px; }
+
+    .dot {
+      flex: 0 0 auto;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+    .dot.ok { background: var(--green); }
+    .dot.warn { background: #e6c34a; }
+    .dot.bad { background: var(--red); }
+
+    /* Scoreboard */
+    .board-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0b0d11;
+    }
+
+    .board-rank {
+      flex: 0 0 auto;
+      width: 22px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .board-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+    .board-score { font-weight: 800; font-variant-numeric: tabular-nums; }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+    }
+    .badge.you { color: var(--blue); border-color: var(--blue); }
+    .badge.ready { color: var(--green); border-color: rgba(101, 212, 110, .6); }
+    .badge:empty { display: none; }
+
+    /* Debug console */
+    .debug {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .debug-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .debug-header h2 {
+      margin: 0;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+
+    .debug-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .debug-actions button,
+    .debug-toggle button {
+      min-height: 34px;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    .debug-toggles {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .debug-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #10131a;
+      padding: 8px;
+    }
+
+    .debug-toggle span {
+      min-width: 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .debug-toggle button.on {
+      border-color: rgba(101, 212, 110, .9);
+      background: rgba(101, 212, 110, .18);
+      color: var(--green);
+    }
+
+    .debug-console {
+      height: 260px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #090b0f;
+      padding: 10px;
+      color: #dce6f7;
+      font: 12px/1.45 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .debug-empty { color: var(--muted); }
+
+    @media (max-width: 430px) {
+      body { padding: 14px; }
+      main { padding: 18px; }
+      h1 { font-size: 24px; }
+      .buttons { grid-template-columns: 1fr; }
+      .session-actions input { width: 64px; }
+      .debug-header { align-items: flex-start; flex-direction: column; }
+      .debug-actions { justify-content: flex-start; }
+      .debug-toggles { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Remote Bot Joiner</h1>
+    <p class="sub">Join one or many bots to a game code, manage the whole fleet, and watch every player's live score.</p>
+
+    <div class="field">
+      <label for="apiToken">Access token <span style="font-weight:400">(only needed when the server is hosted/public)</span></label>
+      <input id="apiToken" autocomplete="off" placeholder="paste token if the server requires one" />
+    </div>
+
+    <div class="field">
+      <label for="gameCode">Game code</label>
+      <input id="gameCode" maxlength="32" autocomplete="off" placeholder="JG3156JLDX" />
+    </div>
+
+    <div class="field">
+      <div class="row-2">
+        <div class="grow">
+          <label for="botName">Bot name</label>
+          <input id="botName" maxlength="24" autocomplete="off" value="Remote Bot" />
+        </div>
+        <div class="narrow">
+          <label for="botCount">How many</label>
+          <input id="botCount" type="number" min="1" max="10" value="1" />
+        </div>
+      </div>
+    </div>
+
+    <div class="buttons" style="grid-template-columns: 1fr;">
+      <button class="primary" id="joinBtn">Join bots</button>
+    </div>
+
+    <div class="fleet" id="fleetBar">
+      <p class="fleet-scope">Bulk actions apply to: <b id="scopeLabel">all games</b></p>
+
+      <div class="toggle-row">
+        <div class="toggle-copy">
+          <strong>Auto-ready players</strong>
+          <span>Readies every player your bots can see in this game, automatically.</span>
+        </div>
+        <button class="switch" id="autoReadyToggle" aria-label="Auto-ready players" aria-pressed="false"></button>
+      </div>
+
+      <div class="fleet-row">
+        <button id="readyAllBtn">Ready all now</button>
+        <button id="leaveAllBtn">Leave all</button>
+      </div>
+
+      <div class="fleet-row">
+        <input class="grow" id="scoreAllAmount" type="number" placeholder="score for all bots" />
+        <button id="scoreAllBtn">Set all scores</button>
+      </div>
+    </div>
+
+    <div class="status" id="statusBox">
+      <strong>Idle</strong>
+      Enter a game code to begin.
+    </div>
+
+    <div class="sessions" id="sessionsPanel">
+      <div class="debug-header">
+        <h2>Your bots <span id="sessionsCount" class="badge"></span></h2>
+        <div class="debug-actions">
+          <button id="refreshSessionsBtn">Refresh</button>
+        </div>
+      </div>
+      <div class="sessions-list" id="sessionsList">
+        <span class="debug-empty">No active bots.</span>
+      </div>
+    </div>
+
+    <div class="board" id="boardPanel">
+      <div class="debug-header">
+        <h2>Live scoreboard <span id="boardCount" class="badge"></span></h2>
+      </div>
+      <div class="board-list" id="boardList">
+        <span class="debug-empty">No players seen yet. Join a game to populate the scoreboard.</span>
+      </div>
+    </div>
+
+    <div class="debug" id="debugPanel">
+      <div class="debug-header">
+        <h2>Socket Console</h2>
+        <div class="debug-actions">
+          <button id="refreshLogsBtn">Refresh</button>
+          <button id="copyLogsBtn">Copy</button>
+          <button id="clearLogsBtn">Clear</button>
+        </div>
+      </div>
+      <div class="debug-toggles">
+        <div class="debug-toggle">
+          <span>Inbound events</span>
+          <button data-debug-toggle="socketEvents">Off</button>
+        </div>
+        <div class="debug-toggle">
+          <span>Join ack</span>
+          <button data-debug-toggle="joinAck">Off</button>
+        </div>
+        <div class="debug-toggle">
+          <span>Outbound emits</span>
+          <button data-debug-toggle="outbound">Off</button>
+        </div>
+        <div class="debug-toggle">
+          <span>Full payloads</span>
+          <button data-debug-toggle="payloads">On</button>
+        </div>
+      </div>
+      <div class="debug-console" id="debugConsole">
+        <span class="debug-empty">No socket logs yet. Turn on logging, then join or interact with a game.</span>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const apiToken = document.getElementById('apiToken');
+    const gameCode = document.getElementById('gameCode');
+    const botName = document.getElementById('botName');
+    const botCount = document.getElementById('botCount');
+    const joinBtn = document.getElementById('joinBtn');
+    const scopeLabel = document.getElementById('scopeLabel');
+    const autoReadyToggle = document.getElementById('autoReadyToggle');
+    const readyAllBtn = document.getElementById('readyAllBtn');
+    const leaveAllBtn = document.getElementById('leaveAllBtn');
+    const scoreAllAmount = document.getElementById('scoreAllAmount');
+    const scoreAllBtn = document.getElementById('scoreAllBtn');
+    const statusBox = document.getElementById('statusBox');
+    const sessionsList = document.getElementById('sessionsList');
+    const sessionsCount = document.getElementById('sessionsCount');
+    const refreshSessionsBtn = document.getElementById('refreshSessionsBtn');
+    const boardList = document.getElementById('boardList');
+    const boardCount = document.getElementById('boardCount');
+    const debugConsole = document.getElementById('debugConsole');
+    const refreshLogsBtn = document.getElementById('refreshLogsBtn');
+    const copyLogsBtn = document.getElementById('copyLogsBtn');
+    const clearLogsBtn = document.getElementById('clearLogsBtn');
+    const debugToggleBtns = [...document.querySelectorAll('[data-debug-toggle]')];
+
+    const TOKEN_KEY = 'staxApiToken';
+    let lastSessions = [];
+    let debugSettings = { socketEvents: false, joinAck: false, outbound: false, payloads: true };
+    let debugLogs = [];
+    let latestLogTs = 0;
+    let logPollTimer = null;
+    let fleetPollTimer = null;
+
+    function authHeaders() {
+      const token = (apiToken.value || '').trim();
+      // Same token unlocks both control and debug endpoints when remote.
+      return token ? { 'x-api-token': token, 'x-debug-token': token } : {};
+    }
+
+    async function api(path, body) {
+      const res = await fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify(body || {}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      return data;
+    }
+
+    async function getJson(path) {
+      const res = await fetch(path, { headers: authHeaders() });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      return data;
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+      }[char]));
+    }
+
+    function setStatus(kind, title, detail) {
+      statusBox.className = `status ${kind || ''}`.trim();
+      statusBox.innerHTML = `<strong>${escapeHtml(title)}</strong>${escapeHtml(detail)}`;
+    }
+
+    // The "scope" for bulk actions and the scoreboard is the game code typed
+    // above. Empty means every game this server is driving bots in.
+    function currentScope() {
+      return gameCode.value.trim().toUpperCase();
+    }
+
+    function firstSessionInScope() {
+      const scope = currentScope();
+      return lastSessions.find((s) => !scope || s.gameCode === scope) || null;
+    }
+
+    function refreshScopeLabel() {
+      const scope = currentScope();
+      scopeLabel.textContent = scope ? scope : 'all games';
+    }
+
+    // ---- Join ----
+    joinBtn.addEventListener('click', async () => {
+      const code = currentScope();
+      const name = botName.value.trim();
+      const count = Math.min(10, Math.max(1, Number(botCount.value) || 1));
+      if (!code) return setStatus('error', 'Missing code', 'Enter a game code first.');
+      if (!name) return setStatus('error', 'Missing name', 'Enter a bot name first.');
+
+      joinBtn.disabled = true;
+      setStatus('', 'Joining', `Connecting ${count} bot${count === 1 ? '' : 's'} to ${code}...`);
+      try {
+        const result = await api('/api/stax/join-bulk', { gameCode: code, name, count });
+        const failed = result.errors?.length || 0;
+        const detail = failed
+          ? `${result.joinedCount}/${result.requested} joined ${code}. ${failed} failed: ${result.errors.map((e) => e.error).join('; ')}`
+          : `${result.joinedCount} bot${result.joinedCount === 1 ? '' : 's'} joined ${code}.`;
+        setStatus(failed ? 'error' : 'connected', failed ? 'Partly joined' : 'Joined', detail);
+        await refreshFleet();
+      } catch (err) {
+        setStatus('error', 'Join failed', err.message);
+      } finally {
+        joinBtn.disabled = false;
+      }
+    });
+
+    // ---- Bulk actions ----
+    autoReadyToggle.addEventListener('click', async () => {
+      const session = firstSessionInScope();
+      if (!session) return setStatus('error', 'No bots', 'Join a bot to that game before toggling auto-ready.');
+      const enabled = !autoReadyToggle.classList.contains('on');
+      try {
+        const result = await api('/api/stax/autoready', { sessionId: session.sessionId, enabled });
+        setStatus('connected', 'Auto-ready', `Auto-ready is ${result.autoReady ? 'on' : 'off'} for ${result.gameCode}.`);
+        await refreshFleet();
+      } catch (err) {
+        setStatus('error', 'Auto-ready failed', err.message);
+      }
+    });
+
+    readyAllBtn.addEventListener('click', async () => {
+      const session = firstSessionInScope();
+      if (!session) return setStatus('error', 'No bots', 'Nothing to ready in that scope.');
+      try {
+        const result = await api('/api/stax/ready-owned', { sessionId: session.sessionId });
+        setStatus('connected', 'Ready', `Readied ${result.readyCount} player${result.readyCount === 1 ? '' : 's'} in ${result.gameCode}.`);
+      } catch (err) {
+        setStatus('error', 'Ready failed', err.message);
+      }
+    });
+
+    leaveAllBtn.addEventListener('click', async () => {
+      const scope = currentScope();
+      try {
+        const result = await api('/api/stax/leave-all', scope ? { gameCode: scope } : {});
+        setStatus('', 'Left', `Removed ${result.left} bot${result.left === 1 ? '' : 's'}${scope ? ` from ${scope}` : ''}.`);
+        await refreshFleet();
+      } catch (err) {
+        setStatus('error', 'Leave-all failed', err.message);
+      }
+    });
+
+    scoreAllBtn.addEventListener('click', async () => {
+      const amount = Number(scoreAllAmount.value);
+      if (!Number.isFinite(amount)) return setStatus('error', 'Bad score', 'Enter a number for the bulk score.');
+      const scope = currentScope();
+      try {
+        const result = await api('/api/stax/score-all', { amount, ...(scope ? { gameCode: scope } : {}) });
+        setStatus('connected', 'Scores set', `Set ${result.updated} bot${result.updated === 1 ? '' : 's'} to ${amount}${result.skipped ? ` (${result.skipped} skipped, disconnected)` : ''}.`);
+      } catch (err) {
+        setStatus('error', 'Score-all failed', err.message);
+      }
+    });
+
+    // ---- Live sessions (per-bot controls) ----
+    function sessionState(s) {
+      if (s.connected) return { text: 'connected', cls: 'ok' };
+      if (s.reconnecting) return { text: 'reconnecting', cls: 'warn' };
+      return { text: 'disconnected', cls: 'bad' };
+    }
+
+    function renderSessions(sessions) {
+      sessionsCount.textContent = sessions.length ? String(sessions.length) : '';
+      if (!sessions.length) {
+        sessionsList.innerHTML = '<span class="debug-empty">No active bots.</span>';
+        return;
+      }
+      sessionsList.innerHTML = sessions.map((s) => {
+        const st = sessionState(s);
+        const meta = [escapeHtml(s.gameCode), st.text, s.autoReady ? 'auto-ready' : '', `${s.knownPlayers} known`]
+          .filter(Boolean).join(' · ');
+        const sid = escapeHtml(s.sessionId);
+        return `<div class="session-row">
+            <div class="session-main">
+              <span class="dot ${st.cls}"></span>
+              <div>
+                <strong>${escapeHtml(s.name)}</strong>
+                <span class="session-meta">${meta}</span>
+              </div>
+            </div>
+            <div class="session-actions">
+              <input type="number" class="row-score" data-session="${sid}" placeholder="score" />
+              <button class="row-set" data-session="${sid}">Set</button>
+              <button class="session-leave" data-session="${sid}">Leave</button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    sessionsList.addEventListener('click', async (event) => {
+      const setBtn = event.target.closest('.row-set');
+      const leaveBtn = event.target.closest('.session-leave');
+      if (setBtn) {
+        const sessionId = setBtn.dataset.session;
+        const input = sessionsList.querySelector(`.row-score[data-session="${CSS.escape(sessionId)}"]`);
+        const amount = Number(input && input.value);
+        if (!Number.isFinite(amount)) return setStatus('error', 'Bad score', 'Enter a number first.');
+        setBtn.disabled = true;
+        try {
+          const result = await api('/api/stax/score-self', { sessionId, amount });
+          setStatus('connected', 'Score set', `Bot score sent: ${result.score}`);
+        } catch (err) {
+          setStatus('error', 'Score failed', err.message);
+        } finally {
+          setBtn.disabled = false;
+        }
+        return;
+      }
+      if (leaveBtn) {
+        const sessionId = leaveBtn.dataset.session;
+        leaveBtn.disabled = true;
+        try {
+          await api('/api/stax/leave', { sessionId });
+          await refreshFleet();
+        } catch (err) {
+          leaveBtn.disabled = false;
+          setStatus('error', 'Leave failed', err.message);
+        }
+      }
+    });
+
+    refreshSessionsBtn.addEventListener('click', () => { refreshFleet().catch(() => {}); });
+
+    // ---- Live scoreboard ----
+    function renderBoard(players) {
+      boardCount.textContent = players.length ? String(players.length) : '';
+      if (!players.length) {
+        boardList.innerHTML = '<span class="debug-empty">No players seen yet. Join a game to populate the scoreboard.</span>';
+        return;
+      }
+      boardList.innerHTML = players.map((p, i) => {
+        const score = typeof p.score === 'number' ? p.score : '—';
+        const badges = [
+          p.ours ? '<span class="badge you">you</span>' : '',
+          p.ready ? '<span class="badge ready">ready</span>' : '',
+        ].filter(Boolean).join(' ');
+        return `<div class="board-row">
+            <span class="board-rank">${i + 1}</span>
+            <span class="board-name">${escapeHtml(p.name || p.id)} ${badges}</span>
+            <span class="board-score">${escapeHtml(score)}</span>
+          </div>`;
+      }).join('');
+    }
+
+    // ---- Combined fleet refresh (sessions + scoreboard + toggle state) ----
+    async function refreshFleet() {
+      refreshScopeLabel();
+      const scope = currentScope();
+      const [sessions, roster] = await Promise.all([
+        getJson('/api/stax/sessions').catch(() => ({ sessions: [] })),
+        getJson(`/api/stax/roster${scope ? `?gameCode=${encodeURIComponent(scope)}` : ''}`).catch(() => ({ players: [] })),
+      ]);
+      lastSessions = sessions.sessions || [];
+      renderSessions(lastSessions);
+      renderBoard(roster.players || []);
+
+      // Reflect auto-ready state for the current scope on the toggle.
+      const scoped = lastSessions.filter((s) => !scope || s.gameCode === scope);
+      const autoOn = scoped.length > 0 && scoped.some((s) => s.autoReady);
+      autoReadyToggle.classList.toggle('on', autoOn);
+      autoReadyToggle.setAttribute('aria-pressed', String(autoOn));
+    }
+
+    function startFleetPolling() {
+      if (fleetPollTimer) return;
+      fleetPollTimer = setInterval(() => refreshFleet().catch(() => {}), 2000);
+    }
+
+    // ---- Debug console (unchanged behaviour) ----
+    function formatTime(ts) {
+      return new Date(ts).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function formatLog(entry) {
+      const bits = [
+        `[${formatTime(entry.ts)}]`,
+        entry.kind,
+        entry.eventName || entry.message || '',
+        entry.name ? `name=${entry.name}` : '',
+        entry.userId ? `user=${entry.userId}` : '',
+        entry.gameCode ? `game=${entry.gameCode}` : '',
+      ].filter(Boolean);
+      const payload = entry.payload ?? entry.settings;
+      if (typeof payload === 'undefined') return bits.join(' ');
+      return `${bits.join(' ')}\n${JSON.stringify(payload, null, 2)}`;
+    }
+
+    function renderLogs() {
+      if (!debugLogs.length) {
+        debugConsole.innerHTML = '<span class="debug-empty">No socket logs yet. Turn on logging, then join or interact with a game.</span>';
+        return;
+      }
+      debugConsole.textContent = debugLogs.map(formatLog).join('\n\n');
+      debugConsole.scrollTop = debugConsole.scrollHeight;
+    }
+
+    function renderDebugToggles() {
+      for (const btn of debugToggleBtns) {
+        const key = btn.dataset.debugToggle;
+        const enabled = Boolean(debugSettings[key]);
+        btn.classList.toggle('on', enabled);
+        btn.textContent = enabled ? 'On' : 'Off';
+        btn.setAttribute('aria-pressed', String(enabled));
+      }
+    }
+
+    async function refreshLogs({ reset = false } = {}) {
+      const since = reset ? 0 : latestLogTs;
+      const result = await getJson(`/api/stax/debug?since=${encodeURIComponent(since)}`);
+      debugSettings = result.settings;
+      renderDebugToggles();
+      if (reset) debugLogs = [];
+      if (result.logs.length) {
+        debugLogs.push(...result.logs);
+        debugLogs = debugLogs.slice(-500);
+      }
+      latestLogTs = result.latestTs;
+      renderLogs();
+    }
+
+    async function updateDebugSetting(key, enabled) {
+      const nextSettings = { ...debugSettings, [key]: enabled };
+      const result = await api('/api/stax/debug/settings', { settings: nextSettings });
+      debugSettings = result.settings;
+      renderDebugToggles();
+      await refreshLogs();
+    }
+
+    function startLogPolling() {
+      if (logPollTimer) return;
+      logPollTimer = setInterval(() => { refreshLogs().catch(() => {}); }, 1500);
+    }
+
+    for (const btn of debugToggleBtns) {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.debugToggle;
+        updateDebugSetting(key, !debugSettings[key]).catch((err) => {
+          setStatus('error', 'Debug failed', err.message);
+        });
+      });
+    }
+
+    refreshLogsBtn.addEventListener('click', () => {
+      refreshLogs({ reset: true }).catch((err) => setStatus('error', 'Refresh failed', err.message));
+    });
+
+    clearLogsBtn.addEventListener('click', async () => {
+      try {
+        await api('/api/stax/debug/clear');
+        debugLogs = [];
+        latestLogTs = 0;
+        renderLogs();
+      } catch (err) {
+        setStatus('error', 'Clear failed', err.message);
+      }
+    });
+
+    copyLogsBtn.addEventListener('click', async () => {
+      const text = debugLogs.map(formatLog).join('\n\n');
+      try {
+        await navigator.clipboard.writeText(text || '');
+        copyLogsBtn.textContent = 'Copied';
+        setTimeout(() => { copyLogsBtn.textContent = 'Copy'; }, 900);
+      } catch (err) {
+        setStatus('error', 'Copy failed', err.message);
+      }
+    });
+
+    // ---- Init ----
+    gameCode.addEventListener('input', () => {
+      gameCode.value = gameCode.value.toUpperCase();
+      refreshScopeLabel();
+    });
+
+    apiToken.value = localStorage.getItem(TOKEN_KEY) || '';
+    apiToken.addEventListener('input', () => {
+      localStorage.setItem(TOKEN_KEY, apiToken.value.trim());
+    });
+
+    refreshScopeLabel();
+    refreshLogs({ reset: true }).catch(() => {});
+    startLogPolling();
+    refreshFleet().catch(() => {});
+    startFleetPolling();
+  </script>
+</body>
+</html>
